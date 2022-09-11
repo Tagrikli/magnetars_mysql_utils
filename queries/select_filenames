@@ -1,0 +1,1 @@
+SELECT filename FROM event_database
