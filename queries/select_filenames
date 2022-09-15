@@ -1,1 +1,1 @@
-SELECT filename FROM event_database
+SELECT filename FROM `magnetars`.`event_database`

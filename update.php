@@ -29,7 +29,8 @@ echo "Total records count: " . $result->num_rows . "\n";
 
 $filenames = array();
 while ($row = $result->fetch_assoc()) {
-    array_push($filenames, name_base($row["filename"]));
+    $filename = \Utils\basename($row["filename"]);
+    array_push($filenames, $filename);
 }
 
 
@@ -38,27 +39,32 @@ $query_prefix = QUERY::INSERT_RECORD();
 $total_inserted = 0;
 $objects = new RecursiveIteratorIterator(new RecursiveDirectoryIterator('../VEGA_DATA'));
 foreach ($objects as $object) {
-    $filename = $object->getRealPath();
-    $filename_base = basename(name_base($filename));
 
-    if (str_ends_with($filename, '.json') && (!in_array($filename_base, $filenames))) {
+    if ($object->isFile()) {
 
+        $filename = $object->getRealPath();
+        $filename_base = \Utils\basename($filename);
 
-        $data = file_get_contents($filename);
-        $obj = json_decode($data);
+        if (\Utils\str_ends_with($filename, '.json') && (!in_array($filename_base, $filenames))) {
 
-
-        $query_postfix = preparePostfix($obj);
-
-        $query_full =  $query_prefix . " ( " . $query_postfix . ")";
+            $data = file_get_contents($filename);
+            $obj = json_decode($data);
 
 
-        $conn->query($query_full);
+            $query_postfix = \Utils\preparePostfix($obj);
 
-        if ($conn->errno != 0) {
-            echo "[ERROR] Filename: ". $filename . " Error No: " . $conn->errno . " Message: " . $conn->error;
-        } else {
-            $total_inserted++;
+            $query_full =  $query_prefix . " ( " . $query_postfix . ")";
+
+
+            //echo $query_full . "\n";
+            $conn->query($query_full);
+
+            if ($conn->errno != 0) {
+                echo "[ERROR] Filename: " . $filename . " Error No: " . $conn->errno . " Message: " . $conn->error . "\n";
+                echo $query_full . "\n";
+            } else {
+                $total_inserted++;
+            }
         }
     }
 }

@@ -1,5 +1,7 @@
 <?php
 
+namespace Utils;
+
 if (!function_exists('str_ends_with')) {
   function str_ends_with($str, $end)
   {
@@ -8,68 +10,60 @@ if (!function_exists('str_ends_with')) {
 }
 
 $keys_HDU0 = array("METHOD", "MODE", "FILENAME", "TRIGTIME", "TRIGUTC");
-$keys_exclude = array("TRIG_DETS", "SIGNIFICANCE");
+$keys_HDU1 = array("HR_25", "HR_50", "HR_75");
+$keys_HDU1_exclude = array("TRIG_DETS", "SIGNIFICANCE");
 
-function name_base($filename){
-  return explode('.',$filename)[0];
+
+
+function basename($filename)
+{
+  return pathinfo($filename, PATHINFO_FILENAME);
+}
+
+function quoted($text)
+{
+  return "\"" . $text . "\"";
 }
 
 
 function preparePostfix($obj)
 {
 
-  global $keys_HDU0, $keys_exclude;
+  global $keys_HDU0, $keys_HDU1, $keys_HDU3, $keys_exclude;
 
-  $all = array();
 
   $HDU0 = $obj->HDU0;
   $HDU1 = $obj->HDU1;
   $HDU3 = $obj->HDU3;
 
-
-  foreach ($keys_HDU0 as $key) {
-    if ($key == "FILENAME") {
-      array_push($all, "\"" . explode(".", $HDU0->$key)[0] . "\"");
-    } else if ($key != "TRIGTIME") {
-      array_push($all, "\"" . $HDU0->$key . "\"");
-    } else {
-      array_push($all, $HDU0->$key);
-    }
-  }
-
-  $keys_HDU1 = array_keys((array)$HDU1);
-  foreach ($keys_HDU1 as $key) {
-
-    if (!in_array($key, $keys_exclude)) {
-      array_push($all,  $HDU1->$key);
-    }
-  }
+  $all = array(
+    //HDU0 Data
+    quoted($HDU0->METHOD),
+    quoted($HDU0->MODE),
+    quoted(basename($HDU0->FILENAME)),
+    $HDU0->TRIGTIME,
+    quoted($HDU0->TRIGUTC),
+    //HDU1 Data (except significance, they are at the end)
+    $HDU1->DURATION,
+    $HDU1->HR_25,
+    $HDU1->HR_50,
+    $HDU1->HR_75,
+    $HDU1->EVENT_GRADE,
+  );
 
   foreach (array_keys((array)$HDU3) as $key) {
     array_push($all, $HDU3->$key);
   }
 
-  if (in_array($keys_exclude[0], $keys_HDU1)) {
-    //TRIG_DETS
+  $sig_min = "NULL";
+  $sig_max = "NULL";
 
-    foreach (range(0, 11) as $i) {
-      array_push($all, "NULL");
-    }
-
-    foreach ($HDU1->TRIG_DETS as $sig) {
-      array_push($all, $sig);
-    }
-  } elseif (in_array($keys_exclude[1], $keys_HDU1)) {
-    //SIGNIFICANCE
-
-    foreach ($HDU1->SIGNIFICANCE as $sig) {
-      array_push($all, $sig);
-    }
-
-    foreach (range(0, 11) as $i) {
-      array_push($all, "NULL");
-    }
+  if (in_array("SIGNIFICANCE", array_keys((array)$HDU1))) {
+    $sig_max = max($HDU1->SIGNIFICANCE);
+    $sig_min = min($HDU1->SIGNIFICANCE);
   }
+
+  array_push($all, $sig_min, $sig_max);
 
 
   return implode(',', $all);
